@@ -5,6 +5,8 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "socketutil.h"
+#include <stdbool.h>
+#include <unistd.h>
 
 int main() {
     int socketFD = createTCPIpv4Socket();
@@ -18,15 +20,21 @@ int main() {
         printf("Connection was successful \n");
     }
 
-    char* message;
-    message = "GET \\ HTTP/1.1\r\nHost:gogle.com\r\n\r\n";
-    send(socketFD, message, strlen(message), 0);
 
-    char buffer[1024];
-    recv(socketFD, buffer, 1024, 0);
+    char *line = NULL;
+    size_t lineSize = 0;
+    printf("type we will send (type exit)... \n");
+    while(true) {
+        ssize_t charCount = getline(&line, &lineSize, stdin);
 
-    printf("Response was %s \n", buffer);
+        if(charCount > 0){
+            if(strcmp(line, "exit\n") == 0){
+                break;
+            }
+            ssize_t amountWasSent = send(socketFD, line, charCount, 0);
+        }
+    }
 
-    return 0;
+    close(socketFD);
 }
 

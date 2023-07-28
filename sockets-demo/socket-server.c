@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
 int main() {
     int serverSocketFD = createTCPIpv4Socket();
@@ -27,9 +28,21 @@ int main() {
     int clientSocketFD = accept(serverSocketFD, &clientAddress, &clientAddressSize);
 
     char buffer[1024];
-    recv(clientSocketFD, buffer, 1024, 0);
+    while(true) {
+        ssize_t amountReceived = recv(clientSocketFD, buffer, 1024, 0);
 
-    printf("Response was %s\n", buffer);
+        if(amountReceived > 0){
+            buffer[amountReceived] = 0;
+            printf("Response was %s\n", buffer);
+        }
+
+        if(amountReceived == 0){
+            break;
+        }
+    }
+
+    close(clientSocketFD);
+    shutdown(serverSocketFD, SHUT_RDWR);
 
     return 0;
 }
