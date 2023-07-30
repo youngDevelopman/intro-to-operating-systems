@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 struct AcceptedSocket {
     int acceptedSocketFileDescriptor;
@@ -17,6 +18,11 @@ struct AcceptedSocket {
 };
 
 struct AcceptedSocket * acceptIncomingConnection(int serverSocketFD);
+
+void receiveAndPrintIncomingData(int socketFD);
+void acceptNewConnectionAndReceiveAndPrintItsData(int serverSocketFD);
+void startAcceptingIncomingConnections(int serverSocketFD);
+void receiveAndPrintIncomingDataOnSeparateThread(struct AcceptedSocket *pSocket);
 
 int main() {
     int serverSocketFD = createTCPIpv4Socket();
@@ -33,11 +39,29 @@ int main() {
 
     int listenResult = listen(serverSocketFD, 10);
 
-    struct AcceptedSocket* clientSocket = acceptIncomingConnection(serverSocketFD);
+    startAcceptingIncomingConnections(serverSocketFD);
 
+    shutdown(serverSocketFD, SHUT_RDWR);
+
+    return 0;
+}
+
+void startAcceptingIncomingConnections(int serverSocketFD) {
+    while(true) {
+        struct AcceptedSocket* clientSocket = acceptIncomingConnection(serverSocketFD);
+        receiveAndPrintIncomingDataOnSeparateThread(clientSocket);
+    }
+}
+
+void receiveAndPrintIncomingDataOnSeparateThread(struct AcceptedSocket *pSocket) {
+    pthread_t id;
+    pthread_create(&id, NULL, receiveAndPrintIncomingData, pSocket->acceptedSocketFileDescriptor);
+}
+
+void receiveAndPrintIncomingData(int socketFD) {
     char buffer[1024];
     while(true) {
-        ssize_t amountReceived = recv(clientSocket->acceptedSocketFileDescriptor, buffer, 1024, 0);
+        ssize_t amountReceived = recv(socketFD, buffer, 1024, 0);
 
         if(amountReceived > 0){
             buffer[amountReceived] = 0;
@@ -49,10 +73,7 @@ int main() {
         }
     }
 
-    close(clientSocket->acceptedSocketFileDescriptor);
-    shutdown(serverSocketFD, SHUT_RDWR);
-
-    return 0;
+    close(socketFD); 
 }
 
 struct AcceptedSocket * acceptIncomingConnection(int serverSocketFD){
